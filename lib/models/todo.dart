@@ -8,19 +8,37 @@ extension PriorityX on Priority {
 
   // Color values as integers (we use Color(value) in widgets)
   int get colorValue => [
-        0xFF10B981, // green  — low
-        0xFFF59E0B, // amber  — medium
-        0xFFEF4444, // red    — high
+        0xFF06B6D4, // Cyan - low
+        0xFF8B5CF6, // Violet - medium
+        0xFFF43F5E, // Rose - high
       ][index];
 
   int get bgColorValue => [
-        0xFFECFDF5,
-        0xFFFFFBEB,
-        0xFFFFF1F2,
+        0xFFCFFAFE,
+        0xFFEDE9FE,
+        0xFFFFE4E6,
       ][index];
 }
 
 class Todo {
+  static int compareTodos(Todo a, Todo b) {
+    // 1. Priority descending (High > Medium > Low)
+    final priorityDiff = b.priority.index.compareTo(a.priority.index);
+    if (priorityDiff != 0) return priorityDiff;
+    
+    // 2. DueDate earliest first
+    if (a.dueDate != null && b.dueDate != null) {
+      return a.dueDate!.compareTo(b.dueDate!);
+    } else if (a.dueDate != null) {
+      return -1;
+    } else if (b.dueDate != null) {
+      return 1;
+    }
+    
+    // 3. Fallback createdAt
+    return b.createdAt.compareTo(a.createdAt);
+  }
+
   final String id;
   String title;
   String? note;

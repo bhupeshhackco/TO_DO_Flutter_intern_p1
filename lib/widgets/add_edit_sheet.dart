@@ -3,10 +3,10 @@
 
 import 'package:flutter/material.dart';
 import '../models/todo.dart';
+import '../theme/app_theme.dart';
 
 class AddEditSheet extends StatefulWidget {
-  final Todo? todo; // null = add mode, non-null = edit mode
-  final bool isDark;
+  final Todo? todo;
   final Function(
     String title,
     String? note,
@@ -18,7 +18,6 @@ class AddEditSheet extends StatefulWidget {
   const AddEditSheet({
     super.key,
     this.todo,
-    required this.isDark,
     required this.onSave,
   });
 
@@ -42,7 +41,6 @@ class _AddEditSheetState extends State<AddEditSheet> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill if editing
     _titleCtrl = TextEditingController(text: widget.todo?.title ?? '');
     _noteCtrl  = TextEditingController(text: widget.todo?.note  ?? '');
     _priority  = widget.todo?.priority  ?? Priority.medium;
@@ -57,12 +55,20 @@ class _AddEditSheetState extends State<AddEditSheet> {
     super.dispose();
   }
 
-  Color get _surfaceColor =>
-      widget.isDark ? const Color(0xFF1E293B) : Colors.white;
-  Color get _bgColor =>
-      widget.isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-  Color get _textColor =>
-      widget.isDark ? Colors.white : const Color(0xFF1E293B);
+  Color get _surfaceColor {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? kDarkSurface : kSurface;
+  }
+
+  Color get _textColor {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? kDarkText : kText;
+  }
+
+  Color get _dimColor {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? kDarkTextDim : kTextDim;
+  }
 
   void _save() {
     final text = _titleCtrl.text.trim();
@@ -82,8 +88,7 @@ class _AddEditSheetState extends State<AddEditSheet> {
     return Container(
       decoration: BoxDecoration(
         color: _surfaceColor,
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: EdgeInsets.only(
         left: 24, right: 24, top: 16,
@@ -94,49 +99,45 @@ class _AddEditSheetState extends State<AddEditSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-
             // Handle bar
             Center(
               child: Container(
                 width: 40, height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: _dimColor.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
             ),
 
-            // Sheet title
+            // Title
             Text(
               isEdit ? 'Edit Task' : 'New Task',
-              style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.bold,
-                color: _textColor,
-              ),
+              style: heading(size: 22, color: _textColor),
             ),
             const SizedBox(height: 20),
 
-            // ── Title field ────────────────────────────────────
+            // ── Title field ──
             _label('Task title *'),
             const SizedBox(height: 8),
             _textField(_titleCtrl, 'e.g. Finish the project', autofocus: true),
             const SizedBox(height: 14),
 
-            // ── Note field ─────────────────────────────────────
+            // ── Note field ──
             _label('Note (optional)'),
             const SizedBox(height: 8),
             _textField(_noteCtrl, 'Add extra details...', lines: 2),
             const SizedBox(height: 18),
 
-            // ── Priority ───────────────────────────────────────
+            // ── Priority ──
             _label('Priority'),
             const SizedBox(height: 10),
             Row(
               children: Priority.values.map((p) {
                 final selected = _priority == p;
                 final color = Color(p.colorValue);
-                final bg    = Color(p.bgColorValue);
+                final bg = Color(p.bgColorValue);
                 return Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => _priority = p),
@@ -154,9 +155,9 @@ class _AddEditSheetState extends State<AddEditSheet> {
                       child: Text(
                         p.label,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                        style: body(
+                          size: 13,
+                          weight: FontWeight.w700,
                           color: selected ? Colors.white : color,
                         ),
                       ),
@@ -167,7 +168,7 @@ class _AddEditSheetState extends State<AddEditSheet> {
             ),
             const SizedBox(height: 18),
 
-            // ── Category ───────────────────────────────────────
+            // ── Category ──
             _label('Category'),
             const SizedBox(height: 10),
             Wrap(
@@ -178,20 +179,17 @@ class _AddEditSheetState extends State<AddEditSheet> {
                 return GestureDetector(
                   onTap: () => setState(() => _category = cat),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFF6366F1)
-                          : _bgColor,
-                      borderRadius: BorderRadius.circular(99),
+                      color: selected ? categoryColor(cat) : categoryBg(cat),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       cat,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? Colors.white : Colors.grey,
+                      style: body(
+                        size: 13,
+                        weight: FontWeight.w600,
+                        color: selected ? Colors.white : categoryColor(cat),
                       ),
                     ),
                   ),
@@ -200,33 +198,48 @@ class _AddEditSheetState extends State<AddEditSheet> {
             ),
             const SizedBox(height: 18),
 
-            // ── Due date ───────────────────────────────────────
+            // ── Due date ──
             _label('Due date'),
             const SizedBox(height: 8),
             GestureDetector(
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
-                  initialDate: _dueDate ??
-                      DateTime.now().add(const Duration(days: 1)),
+                  initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 1)),
                   firstDate: DateTime.now(),
-                  lastDate:
-                      DateTime.now().add(const Duration(days: 365)),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
                 );
-                if (picked != null) setState(() => _dueDate = picked);
+                if (picked != null && mounted) {
+                  if (!mounted) return;
+                  // ignore: use_build_context_synchronously
+                  final pickedTime = await showTimePicker(
+                    // ignore: use_build_context_synchronously
+                    context: context,
+                    initialTime: _dueDate != null
+                        ? TimeOfDay.fromDateTime(_dueDate!)
+                        : TimeOfDay.now(),
+                  );
+                  if (pickedTime != null) {
+                    setState(() => _dueDate = DateTime(
+                      picked.year, picked.month, picked.day,
+                      pickedTime.hour, pickedTime.minute,
+                    ));
+                  } else {
+                    setState(() => _dueDate = DateTime(
+                      picked.year, picked.month, picked.day, 23, 59,
+                    ));
+                  }
+                }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 13),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                 decoration: BoxDecoration(
                   color: _dueDate != null
-                      ? const Color(0xFFEEF2FF)
-                      : _bgColor,
+                      ? kIndigo.withValues(alpha: 0.08)
+                      : _surfaceColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _dueDate != null
-                        ? const Color(0xFF6366F1)
-                        : Colors.grey.shade200,
+                    color: _dueDate != null ? kIndigo : _dimColor.withValues(alpha: 0.3),
                     width: _dueDate != null ? 1.5 : 1,
                   ),
                 ),
@@ -234,42 +247,36 @@ class _AddEditSheetState extends State<AddEditSheet> {
                   Icon(
                     Icons.calendar_today_rounded,
                     size: 16,
-                    color: _dueDate != null
-                        ? const Color(0xFF6366F1)
-                        : Colors.grey,
+                    color: _dueDate != null ? kIndigo : _dimColor,
                   ),
                   const SizedBox(width: 10),
                   Text(
                     _dueDate != null
                         ? '${_dueDate!.day} / ${_dueDate!.month} / ${_dueDate!.year}'
                         : 'Pick a date',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: _dueDate != null
-                          ? const Color(0xFF6366F1)
-                          : Colors.grey,
+                    style: body(
+                      size: 14,
+                      color: _dueDate != null ? kIndigo : _dimColor,
                     ),
                   ),
                   const Spacer(),
                   if (_dueDate != null)
                     GestureDetector(
                       onTap: () => setState(() => _dueDate = null),
-                      child: const Icon(Icons.close,
-                          size: 16, color: Colors.grey),
+                      child: Icon(Icons.close, size: 16, color: _dimColor),
                     ),
                 ]),
               ),
             ),
             const SizedBox(height: 26),
 
-            // ── Save button ────────────────────────────────────
+            // ── Save button ──
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
+                  backgroundColor: kText,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 15),
                   elevation: 0,
@@ -278,8 +285,7 @@ class _AddEditSheetState extends State<AddEditSheet> {
                 ),
                 child: Text(
                   isEdit ? 'Save Changes' : 'Add Task',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700),
+                  style: body(size: 16, weight: FontWeight.w700, color: Colors.white),
                 ),
               ),
             ),
@@ -291,9 +297,9 @@ class _AddEditSheetState extends State<AddEditSheet> {
 
   Widget _label(String text) => Text(
         text,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
+        style: body(
+          size: 13,
+          weight: FontWeight.w700,
           color: _textColor.withValues(alpha: 0.6),
         ),
       );
@@ -309,26 +315,26 @@ class _AddEditSheetState extends State<AddEditSheet> {
         autofocus: autofocus,
         maxLines: lines,
         onSubmitted: lines == 1 ? (_) => _save() : null,
-        style: TextStyle(fontSize: 14, color: _textColor),
+        style: body(size: 14, color: _textColor),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.grey),
+          hintStyle: body(size: 14, color: _dimColor),
           filled: true,
-          fillColor: _bgColor,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          fillColor: Theme.of(context).brightness == Brightness.dark
+              ? kDarkBg
+              : kBg,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: _dimColor.withValues(alpha: 0.3)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: _dimColor.withValues(alpha: 0.3)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-                color: Color(0xFF6366F1), width: 2),
+            borderSide: const BorderSide(color: kIndigo, width: 2),
           ),
         ),
       );

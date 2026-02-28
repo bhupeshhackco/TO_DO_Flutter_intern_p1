@@ -3,8 +3,10 @@
 // Uses shared_preferences package
 
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/todo.dart';
+import '../providers/theme_provider.dart';
 
 class StorageService {
   // The key we use to store data
@@ -36,16 +38,39 @@ class StorageService {
         .toList();
   }
 
-  // ── Save dark mode preference ───────────────────────────────
-  static Future<void> saveDarkMode(bool isDark) async {
+  // ── Save/Load ThemeMode ───────────────────────────────
+  static Future<void> saveThemeMode(ThemeMode mode) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isDark', isDark);
+    await prefs.setInt('themeMode', mode.index);
   }
 
-  // ── Load dark mode preference ───────────────────────────────
-  static Future<bool> loadDarkMode() async {
+  static Future<ThemeMode> loadThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('isDark') ?? false;
+    final index = prefs.getInt('themeMode') ?? ThemeMode.system.index;
+    return ThemeMode.values[index];
+  }
+
+  // ── Save/Load Color Scheme ───────────────────────────────
+  static Future<void> saveColorScheme(AppColorScheme scheme) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('colorScheme', scheme.index);
+  }
+
+  static Future<AppColorScheme> loadColorScheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final index = prefs.getInt('colorScheme') ?? AppColorScheme.defaultScheme.index;
+    return AppColorScheme.values[index];
+  }
+
+  // ── Save/Load Pure Black Mode ───────────────────────────────
+  static Future<void> savePureBlack(bool isPure) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isPureBlack', isPure);
+  }
+
+  static Future<bool> loadPureBlack() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('isPureBlack') ?? false;
   }
 
   // ── Check if first time user ────────────────────────────────
