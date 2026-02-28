@@ -1,16 +1,19 @@
 // ── widgets/todo_card.dart ────────────────────────────────────
-// Reusable card widget for displaying a single task
+// Task card matching the HTML .task-item design exactly.
+// IMPORTANT: Only the checkbox toggles done state.
+//            Tapping the card body opens the edit sheet.
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/todo.dart';
 import '../theme/app_theme.dart';
+import '../providers/theme_provider.dart';
 import 'task_checkbox.dart';
 
 class TodoCard extends StatefulWidget {
   final Todo todo;
-  final VoidCallback onToggle;
-  final VoidCallback onTap;
+  final VoidCallback onToggle;  // checkbox tap only
+  final VoidCallback onTap;     // card body tap → edit
   final VoidCallback onDelete;
 
   const TodoCard({
@@ -25,34 +28,50 @@ class TodoCard extends StatefulWidget {
   State<TodoCard> createState() => _TodoCardState();
 }
 
-class _TodoCardState extends State<TodoCard>
-    with SingleTickerProviderStateMixin {
+class _TodoCardState extends State<TodoCard> {
   bool _isPressed = false;
-  bool _justCompleted = false;
+
+  Color get _chkColor {
+    switch (widget.todo.category) {
+      case 'Work':     return kRed;
+      case 'Shopping': return kIndigo;
+      case 'Personal': return kGreen;
+      case 'Health':   return kBlue;
+      case 'Study':    return kOrange;
+      default:         return kIndigo;
+    }
+  }
 
   bool get _isOverdue =>
       widget.todo.dueDate != null &&
       widget.todo.dueDate!.isBefore(DateTime.now()) &&
       !widget.todo.isDone;
 
-  void _handleToggle() {
-    if (!widget.todo.isDone) {
-      setState(() => _justCompleted = true);
-      Future.delayed(const Duration(milliseconds: 350), () {
-        if (mounted) setState(() => _justCompleted = false);
-      });
-    }
-    widget.onToggle();
+  String _timeLabel() {
+    if (widget.todo.dueDate == null) return '';
+    if (widget.todo.isDone) return '';
+    final diff = widget.todo.dueDate!.difference(DateTime.now());
+    if (diff.isNegative) return 'Overdue';
+    if (diff.inDays > 0) return '${diff.inDays}d left';
+    if (diff.inHours > 0) return '${diff.inHours}h left';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m';
+    return '< 1m';
   }
 
   @override
   Widget build(BuildContext context) {
-    final todo = widget.todo;
+    final tp = context.watch<ThemeProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? kDarkSurface : kSurface;
-    final textColor = isDark ? kDarkText : kText;
-    final dimColor = isDark ? kDarkTextDim : kTextDim;
-    final priorityColor = Color(todo.priority.colorValue);
+    final surfaceCol = isDark
+        ? (tp.isPureBlack ? kPureSurface : kDarkSurface)
+        : kSurface;
+    final borderCol = isDark ? kDarkBorder : kBorder;
+    final textCol   = isDark ? kDarkText   : kText;
+    final dimCol    = isDark ? kDarkTextDim : kTextDim;
+
+    final todo = widget.todo;
+    final compact = tp.compact;
+    final timeLabel = _timeLabel();
 
     return Dismissible(
       key: Key(todo.id),
@@ -69,121 +88,119 @@ class _TodoCardState extends State<TodoCard>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.delete_outline_rounded,
-                color: Colors.white, size: 24),
+            const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
             const SizedBox(height: 2),
             Text('Delete', style: body(size: 11, weight: FontWeight.w600, color: Colors.white)),
           ],
         ),
       ),
       child: GestureDetector(
+        // ── Card body tap → edit (NOT toggle) ──
+        onTap: widget.onTap,
         onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) {
-          setState(() => _isPressed = false);
-          widget.onTap();
-        },
+        onTapUp: (_)   => setState(() => _isPressed = false),
         onTapCancel: () => setState(() => _isPressed = false),
-        child: AnimatedScale(
-          scale: _isPressed ? 0.97 : (_justCompleted ? 1.02 : 1.0),
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-            decoration: BoxDecoration(
-              color: _justCompleted
-                  ? kGreen.withValues(alpha: 0.08)
-                  : (todo.isDone
-                      ? cardColor.withValues(alpha: 0.6)
-                      : cardColor),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _isOverdue
-                    ? kRed.withValues(alpha: 0.4)
-                    : (isDark ? kDarkBorder : kBorder),
-                width: 1,
+        child: AnimatedOpacity(
+          opacity: todo.isDone ? 0.5 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: AnimatedScale(
+            scale: _isPressed ? 0.985 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOutCubic,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: EdgeInsets.only(bottom: compact ? 6 : 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: compact ? 10 : 14,
               ),
-              boxShadow: shadowSm,
-            ),
-            child: Row(
-              children: [
-                // ── Checkbox ──
-                TaskCheckbox(
-                  isChecked: todo.isDone,
-                  accentColor: priorityColor,
-                  onTap: _handleToggle,
+              decoration: BoxDecoration(
+                color: surfaceCol,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _isOverdue
+                      ? kRed.withValues(alpha: 0.4)
+                      : borderCol,
+                  width: 1,
                 ),
-                const SizedBox(width: 14),
+                boxShadow: shadowSm,
+              ),
+              child: Row(
+                children: [
+                  // ── Checkbox (tap = toggle) ──
+                  // GestureDetector wraps only checkbox to intercept before card
+                  GestureDetector(
+                    onTap: widget.onToggle,
+                    behavior: HitTestBehavior.opaque,
+                    child: TaskCheckbox(
+                      isChecked: todo.isDone,
+                      accentColor: _chkColor,
+                      onTap: widget.onToggle,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
 
-                // ── Content ──
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title
-                      Text(
-                        todo.title,
-                        style: body(
-                          size: 14,
-                          weight: FontWeight.w600,
-                          color: todo.isDone ? dimColor : textColor,
-                        ).copyWith(
-                          decoration: todo.isDone
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                          decorationColor: dimColor,
-                        ),
-                      ),
-
-                      // Note
-                      if (todo.note != null) ...[
-                        const SizedBox(height: 4),
+                  // ── Content ──
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Task title
                         Text(
-                          todo.note!,
+                          todo.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: body(size: 12, color: dimColor),
-                        ),
-                      ],
-
-                      const SizedBox(height: 8),
-
-                      // ── Meta row ──
-                      Row(
-                        children: [
-                          // Category chip
-                          _chip(
-                            todo.category,
-                            categoryBg(todo.category),
-                            categoryColor(todo.category),
+                          style: body(
+                            size: compact ? 13 : 14,
+                            weight: FontWeight.w600,
+                            color: todo.isDone ? dimCol : textCol,
+                          ).copyWith(
+                            decoration: todo.isDone
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
+                            decorationColor: dimCol,
                           ),
-                          const SizedBox(width: 6),
+                        ),
 
-                          // Time chip
-                          if (todo.dueDate != null) ...[
-                            _timeChip(todo, dimColor),
-                            const SizedBox(width: 6),
-                          ],
+                        // Meta row — hidden in compact mode
+                        if (!compact) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              // Category pill
+                              _chip(
+                                todo.category,
+                                isDark ? categoryBgDark(todo.category): categoryBg(todo.category),
+                                categoryColor(todo.category),
+                              ),
 
-                          // Priority dot
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: priorityColor,
-                              shape: BoxShape.circle,
-                            ),
+                              // Time tag
+                              if (timeLabel.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  '⏰ $timeLabel',
+                                  style: body(size: 10, color: dimCol, weight: FontWeight.w500),
+                                ),
+                              ],
+
+                              // Priority dot
+                              const SizedBox(width: 6),
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: _chkColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-
-                // Arrow
-                Icon(Icons.chevron_right_rounded, color: dimColor, size: 20),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -191,51 +208,13 @@ class _TodoCardState extends State<TodoCard>
     );
   }
 
-  Widget _timeChip(Todo todo, Color dimColor) {
-    if (todo.isDone) {
-      final formatted = DateFormat('MMM d, h:mm a').format(todo.dueDate!);
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.schedule_rounded, size: 12, color: dimColor),
-          const SizedBox(width: 3),
-          Text(formatted, style: body(size: 11, color: dimColor)),
-        ],
-      );
-    }
-
-    final diff = todo.dueDate!.difference(DateTime.now());
-    if (diff.isNegative) {
-      return _chip('Overdue', const Color(0xFFFFF0F0), kRed);
-    }
-
-    String timeLeft;
-    if (diff.inDays > 0) {
-      timeLeft = '${diff.inDays}d left';
-    } else if (diff.inHours > 0) {
-      timeLeft = '${diff.inHours}h ${diff.inMinutes % 60}m';
-    } else if (diff.inMinutes > 0) {
-      timeLeft = '${diff.inMinutes}m';
-    } else {
-      timeLeft = '< 1m';
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.schedule_rounded, size: 12, color: dimColor),
-        const SizedBox(width: 3),
-        Text(timeLeft, style: body(size: 11, color: dimColor)),
-      ],
-    );
-  }
-
   Widget _chip(String label, Color bg, Color fg) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label, style: body(size: 10, weight: FontWeight.w600, color: fg)),
+        child: Text(label,
+            style: body(size: 10, weight: FontWeight.w700, color: fg)),
       );
 }

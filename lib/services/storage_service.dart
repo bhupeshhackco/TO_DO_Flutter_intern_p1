@@ -84,4 +84,15 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasSeenOnboarding', false);
   }
+
+  // ── Generic bool prefs ──────────────────────────────────────
+  static Future<void> saveBool(String key, bool val) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, val);
+  }
+
+  static Future<bool> loadBool(String key, bool defaultVal) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(key) ?? defaultVal;
+  }
 }

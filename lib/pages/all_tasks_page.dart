@@ -1,12 +1,14 @@
 // ── pages/all_tasks_page.dart ─────────────────────────────────
-// Shows ALL tasks with search + filter
+// "All Tasks" screen matching HTML #s-tasks exactly.
+// Search + status/category filters + FAB.
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../models/todo.dart';
 import '../theme/app_theme.dart';
 import '../widgets/todo_card.dart';
 import '../widgets/add_edit_sheet.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 class AllTasksPage extends StatefulWidget {
   final List<Todo> todos;
@@ -14,6 +16,7 @@ class AllTasksPage extends StatefulWidget {
   final Function(Todo) onDelete;
   final Function(Todo todo, String title, String? note,
       Priority priority, String category, DateTime? dueDate) onEdit;
+  final VoidCallback onAddTask;
 
   const AllTasksPage({
     super.key,
@@ -21,6 +24,7 @@ class AllTasksPage extends StatefulWidget {
     required this.onToggle,
     required this.onDelete,
     required this.onEdit,
+    required this.onAddTask,
   });
 
   @override
@@ -33,18 +37,21 @@ class _AllTasksPageState extends State<AllTasksPage> {
   String _statusFilter   = 'All';
   String _categoryFilter = 'All';
 
-  static const List<String> statuses   = ['All', 'Active', 'Done'];
-  static const List<String> categories = ['All', 'Personal', 'Work', 'Shopping', 'Health', 'Study'];
+  static const List<String> _statuses = ['All', 'Active', 'Done'];
+
+  List<String> get _cats {
+    final cats = widget.todos.map((t) => t.cat).toSet().toList();
+    cats.sort();
+    return ['All', ...cats];
+  }
 
   List<Todo> get _filtered {
     return widget.todos.where((t) {
-      if (_statusFilter == 'Active' && t.isDone) return false;
-      if (_statusFilter == 'Done' && !t.isDone) return false;
-      if (_categoryFilter != 'All' && t.category != _categoryFilter) return false;
+      if (_statusFilter == 'Active' && t.isDone)  return false;
+      if (_statusFilter == 'Done'   && !t.isDone) return false;
+      if (_categoryFilter != 'All'  && t.category != _categoryFilter) return false;
       if (_searchQuery.isNotEmpty &&
-          !t.title.toLowerCase().contains(_searchQuery.toLowerCase())) {
-        return false;
-      }
+          !t.title.toLowerCase().contains(_searchQuery.toLowerCase())) return false;
       return true;
     }).toList()
       ..sort(Todo.compareTodos);
@@ -71,29 +78,33 @@ class _AllTasksPageState extends State<AllTasksPage> {
 
   @override
   Widget build(BuildContext context) {
+    final tp     = context.watch<ThemeProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textCol = isDark ? kDarkText : kText;
-    final dimCol = isDark ? kDarkTextDim : kTextDim;
-    final surfaceCol = isDark ? kDarkSurface : kSurface;
-    final borderCol = isDark ? kDarkBorder : kBorder;
-    final filtered = _filtered;
+    final textCol   = isDark ? kDarkText    : kText;
+    final dimCol    = isDark ? kDarkTextDim : kTextDim;
+    final surfaceCol = isDark
+        ? (tp.isPureBlack ? kPureSurface : kDarkSurface)
+        : kSurface;
+    final borderCol  = isDark ? kDarkBorder : kBorder;
+    final accent1    = tp.accent1;
+    final filtered   = _filtered;
 
     return SafeArea(
       bottom: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──
+          // ── Title ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-            child: Text('All Tasks', style: heading(size: 34, color: textCol)),
+            padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+            child: Text('All Tasks', style: heading(size: 32, color: textCol)),
           ),
 
-          // ── Search bar ──
+          // ── Search ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: surfaceCol,
                 borderRadius: BorderRadius.circular(16),
@@ -102,7 +113,7 @@ class _AllTasksPageState extends State<AllTasksPage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.search_rounded, color: dimCol, size: 20),
+                  Text('🔍', style: TextStyle(fontSize: 15, color: dimCol)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextField(
@@ -113,48 +124,45 @@ class _AllTasksPageState extends State<AllTasksPage> {
                         hintText: 'Search tasks...',
                         hintStyle: body(size: 14, color: dimCol),
                         border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          ).animate().fade(duration: 300.ms),
+          ),
 
           const SizedBox(height: 12),
 
-          // ── Status filter chips ──
+          // ── Status chips: All / Active / Done ──
           SizedBox(
-            height: 38,
+            height: 36,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemCount: statuses.length,
+              itemCount: _statuses.length,
               itemBuilder: (_, i) {
-                final s = statuses[i];
-                final isActive = _statusFilter == s;
+                final s = _statuses[i];
+                final on = _statusFilter == s;
                 return GestureDetector(
                   onTap: () => setState(() => _statusFilter = s),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
                     decoration: BoxDecoration(
-                      color: isActive ? kText : surfaceCol,
+                      color: on ? textCol : surfaceCol,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: isActive ? kText : borderCol),
-                      boxShadow: isActive
-                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))]
+                      border: Border.all(color: on ? textCol : borderCol, width: 1.5),
+                      boxShadow: on
+                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: const Offset(0, 3))]
                           : shadowSm,
                     ),
-                    child: Text(
-                      s,
-                      style: body(
-                        size: 12,
-                        weight: FontWeight.w600,
-                        color: isActive ? Colors.white : dimCol,
-                      ),
-                    ),
+                    child: Text(s,
+                        style: body(size: 11, weight: FontWeight.w700,
+                            color: on ? (isDark ? kDarkBg : kBg) : dimCol)),
                   ),
                 );
               },
@@ -163,35 +171,36 @@ class _AllTasksPageState extends State<AllTasksPage> {
 
           const SizedBox(height: 8),
 
-          // ── Category filter chips ──
+          // ── Category chips ──
           SizedBox(
-            height: 34,
+            height: 32,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 7),
+              itemCount: _cats.length,
               itemBuilder: (_, i) {
-                final c = categories[i];
-                final isActive = _categoryFilter == c;
-                final accent = c == 'All' ? kIndigo : categoryColor(c);
+                final c = _cats[i];
+                final isAll = c == 'All';
+                final on = _categoryFilter == c;
+                final color = isAll ? accent1 : categoryColor(c);
+                final bg    = isAll
+                    ? (on ? accent1 : accent1.withValues(alpha: 0.1))
+                    : (on ? color : color.withValues(alpha: 0.1));
                 return GestureDetector(
                   onTap: () => setState(() => _categoryFilter = c),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                     decoration: BoxDecoration(
-                      color: isActive ? accent : accent.withValues(alpha: 0.08),
+                      color: bg,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      c,
-                      style: body(
-                        size: 11,
-                        weight: FontWeight.w600,
-                        color: isActive ? Colors.white : accent.withValues(alpha: 0.8),
-                      ),
-                    ),
+                    child: Text(c,
+                        style: body(
+                          size: 11, weight: FontWeight.w700,
+                          color: on ? Colors.white : color.withValues(alpha: 0.8),
+                        )),
                   ),
                 );
               },
@@ -200,7 +209,7 @@ class _AllTasksPageState extends State<AllTasksPage> {
 
           // ── Task count ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 14, 24, 2),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 2),
             child: Text(
               '${filtered.length} task${filtered.length == 1 ? '' : 's'}',
               style: body(size: 12, weight: FontWeight.w600, color: dimCol),
@@ -214,9 +223,10 @@ class _AllTasksPageState extends State<AllTasksPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.search_off_rounded, size: 48, color: dimCol.withValues(alpha: 0.4)),
+                        Text('🔍', style: TextStyle(fontSize: 48)),
                         const SizedBox(height: 12),
-                        Text('No tasks found', style: body(size: 16, weight: FontWeight.w600, color: dimCol)),
+                        Text('No tasks found',
+                            style: body(size: 16, weight: FontWeight.w600, color: dimCol)),
                       ],
                     ),
                   )
@@ -230,11 +240,7 @@ class _AllTasksPageState extends State<AllTasksPage> {
                         onToggle: () => widget.onToggle(t),
                         onTap: () => _openEdit(t),
                         onDelete: () => widget.onDelete(t),
-                      ).animate().fade(delay: (i * 60).ms, duration: 300.ms).slideX(
-                          begin: 0.02,
-                          delay: (i * 60).ms,
-                          duration: 300.ms,
-                          curve: Curves.easeOutCubic);
+                      );
                     },
                   ),
           ),
@@ -242,4 +248,9 @@ class _AllTasksPageState extends State<AllTasksPage> {
       ),
     );
   }
+}
+
+// Extension for convenience
+extension on Todo {
+  String get cat => category;
 }
