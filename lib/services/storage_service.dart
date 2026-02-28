@@ -21,6 +21,8 @@ class StorageService {
         todos.map((t) => jsonEncode(t.toMap())).toList();
 
     await prefs.setStringList(_key, jsonList);
+    // Mark that we've saved at least once (distinguishes first-launch from empty list)
+    await prefs.setBool('hasSavedTodos', true);
   }
 
   // ── Load all todos from local storage ──────────────────────
@@ -36,6 +38,12 @@ class StorageService {
     return jsonList
         .map((item) => Todo.fromMap(jsonDecode(item) as Map<String, dynamic>))
         .toList();
+  }
+
+  // ── Check if todos have ever been saved ─────────────────────
+  static Future<bool> hasSavedTodos() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('hasSavedTodos') ?? false;
   }
 
   // ── Save/Load ThemeMode ───────────────────────────────

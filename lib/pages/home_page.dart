@@ -49,10 +49,15 @@ class _HomePageState extends State<HomePage> {
   // ── Data ──────────────────────────────────────────────────
   Future<void> _loadTodos() async {
     final saved = await StorageService.loadTodos();
+    final hasSavedBefore = await StorageService.hasSavedTodos();
     setState(() {
-      _todos   = saved.isEmpty ? _seed() : saved;
+      _todos   = (saved.isEmpty && !hasSavedBefore) ? _seed() : saved;
       _loading = false;
     });
+    // If we're using seed data for first time, persist it
+    if (!hasSavedBefore && _todos.isNotEmpty) {
+      _save();
+    }
   }
 
   Future<void> _save() async {

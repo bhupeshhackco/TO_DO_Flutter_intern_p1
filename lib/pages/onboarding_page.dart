@@ -39,7 +39,7 @@ const _slides = [
     accent: Color(0xFF6366F1),
     bgGrad1: Color(0xFF6366F1),
     bgGrad2: Color(0xFFEC4899),
-    title: 'Welcome to TaskFlow',
+    title: 'Welcome to Taskora',
     subtitle: 'Your personal productivity companion — beautifully simple, incredibly powerful.',
     features: [
       _Feature('📋', 'Create tasks in seconds'),
@@ -190,7 +190,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // App name
-                    Text('TaskFlow',
+                    Text('Taskora',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,

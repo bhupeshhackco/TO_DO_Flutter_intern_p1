@@ -128,7 +128,7 @@ class _SplashPageState extends State<SplashPage>
                     child: const Column(
                       children: [
                         Text(
-                          'TickIt',
+                          'Taskora',
                           style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w900,

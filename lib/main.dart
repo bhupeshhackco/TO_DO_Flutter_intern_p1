@@ -1,5 +1,3 @@
-// ── main.dart ─────────────────────────────────────────────────
-// Entry point of the app
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -64,7 +62,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(builder: (context, themeProvider, child) {
       return MaterialApp(
-        title: 'TaskFlow',
+        title: 'Taskora',
         debugShowCheckedModeBanner: false,
         themeMode: themeProvider.themeMode,
         theme: themeProvider.lightTheme,

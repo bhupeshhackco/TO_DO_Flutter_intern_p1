@@ -4,7 +4,7 @@ import '../models/todo.dart';
 
 class HomeWidgetService {
   static const String appGroupId = '<YOUR APP GROUP>'; // Replace with actual group if on iOS
-  static const String androidWidgetName = 'TodoWidget';
+  static const String androidWidgetName = 'TodoWidgetReceiver';
 
   static Future<void> init() async {
     if (kIsWeb) return;
